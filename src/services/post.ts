@@ -1,38 +1,67 @@
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { Post } from '@/types';
+import {
+    collection,
+    addDoc,
+    query,
+    where,
+    orderBy,
+    limit,
+    getDocs,
+    deleteDoc,
+    doc,
+    getDoc
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Post } from "@/types";
 
-// Collection Reference Helper
-const postCollection = collection(db, 'posts');
-
-// 1. Create
-export const createPost = async (postData: Omit<Post, 'id'>) => {
+export const createPost = async (postData: Omit<Post, "id">) => {
     try {
-        const docRef = await addDoc(postCollection, {
-            ...postData,
-            createdAt: Date.now(),
-        });
-        return { success: true, id: docRef.id };
+        const docRef = await addDoc(collection(db, "posts"), postData);
+        return docRef.id;
     } catch (error) {
-        console.error("Error creating post:", error);
-        return { success: false, error };
+        console.error("Error adding post: ", error);
+        throw error;
     }
 };
 
-// 2. Read (Public Feed)
-export const getPublicFeed = async () => {
+export const deletePost = async (postId: string) => {
     try {
-        const q = query(
-            postCollection,
-            where("visibility", "==", "public"),
-            orderBy("createdAt", "desc"),
-            limit(20)
-        );
-
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+        await deleteDoc(doc(db, "posts", postId));
     } catch (error) {
-        console.error("Error getting public feed:", error);
-        return [];
+        console.error("Error deleting post: ", error);
+        throw error;
+    }
+};
+
+export const getPublicFeed = async (): Promise<Post[]> => {
+    const q = query(
+        collection(db, "posts"),
+        where("visibility", "==", "public"),
+        orderBy("createdAt", "desc"),
+        limit(20)
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Post));
+};
+
+export const getUserPosts = async (authorId: string): Promise<Post[]> => {
+    const q = query(
+        collection(db, "posts"),
+        where("authorId", "==", authorId),
+        orderBy("createdAt", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Post));
+};
+
+export const getPost = async (postId: string): Promise<Post | null> => {
+    const docRef = doc(db, "posts", postId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Post;
+    } else {
+        return null;
     }
 };

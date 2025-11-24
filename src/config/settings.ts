@@ -1,0 +1,20 @@
+export const APP_CONFIG = {
+    name: "Social Restaurant Review",
+    maxPostLength: 500,
+    ratingCategories: [
+        { id: 'food', label: 'Food' },
+        { id: 'ambiance', label: 'Ambiance' }
+    ],
+    defaultVisibility: 'public',
+    placeholders: {
+        createPost: "What did you eat today?",
+        search: "Search for restaurants...",
+        emptyFeed: "No posts yet. Be the first to share!",
+        emptyReviews: "You haven't posted any reviews yet.",
+        emptySaved: "No saved places yet."
+    },
+    navLinks: [
+        { href: '/feed', label: 'Feed' },
+        { href: '/profile', label: 'Profile' }
+    ]
+};

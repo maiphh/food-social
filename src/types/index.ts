@@ -1,25 +1,29 @@
 export interface User {
-    id?: string;
-    name: string;
-    email: string;
-    createdAt: any; // Using any for Firestore Timestamp compatibility for now, or Date
-    updatedAt?: any;
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+    following: string[];
 }
 
 export interface Post {
-    id?: string;
+    id: string;
     authorId: string;
     content: string;
+    ratings: {
+        food: number;
+        ambiance: number;
+    };
     images: string[];
-    ratings: { food: number; ambiance: number };
     visibility: 'public' | 'private' | 'group';
     groupId?: string;
-    createdAt: number; // Use Milliseconds (Date.now()) for easy sorting
+    createdAt: number;
 }
 
 export interface Group {
-    id?: string;
+    id: string;
     name: string;
+    ownerId: string;
     members: string[];
-    createdAt: number;
+    isPrivate: boolean;
 }
