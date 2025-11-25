@@ -15,18 +15,18 @@ import {
 import { db } from "@/lib/firebase";
 import { Comment, Reply } from "@/types";
 
-export const createComment = async (data: Omit<Comment, "comment_id" | "replies" | "created_at">) => {
+export const createComment = async (data: Omit<Comment, "commentId" | "replies" | "createdAt">) => {
     try {
         const commentData = {
             ...data,
-            created_at: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
             replies: []
         };
         const docRef = await addDoc(collection(db, "comments"), commentData);
 
-        // Update the document with its own ID as comment_id
+        // Update the document with its own ID as commentId
         await updateDoc(docRef, {
-            comment_id: docRef.id
+            commentId: docRef.id
         });
 
         return docRef.id;
@@ -45,12 +45,12 @@ export const deleteComment = async (commentId: string) => {
     }
 };
 
-export const replyComment = async (commentId: string, replyData: Omit<Reply, "reply_id" | "created_at">) => {
+export const replyComment = async (commentId: string, replyData: Omit<Reply, "replyId" | "createdAt">) => {
     try {
         const reply: Reply = {
             ...replyData,
-            reply_id: crypto.randomUUID(), // Generate a unique ID for the reply
-            created_at: new Date().toISOString()
+            replyId: crypto.randomUUID(), // Generate a unique ID for the reply
+            createdAt: new Date().toISOString()
         };
 
         const commentRef = doc(db, "comments", commentId);
@@ -58,7 +58,7 @@ export const replyComment = async (commentId: string, replyData: Omit<Reply, "re
             replies: arrayUnion(reply)
         });
 
-        return reply.reply_id;
+        return reply.replyId;
     } catch (error) {
         console.error("Error replying to comment: ", error);
         throw error;
@@ -72,7 +72,7 @@ export const deleteReply = async (commentId: string, replyId: string) => {
 
         if (commentSnap.exists()) {
             const commentData = commentSnap.data() as Comment;
-            const replyToRemove = commentData.replies.find(r => r.reply_id === replyId);
+            const replyToRemove = commentData.replies.find(r => r.replyId === replyId);
 
             if (replyToRemove) {
                 await updateDoc(commentRef, {
@@ -94,8 +94,8 @@ export const getComments = async (postId: string): Promise<Comment[]> => {
     try {
         const q = query(
             collection(db, "comments"),
-            where("post_id", "==", postId),
-            orderBy("created_at", "asc") // Oldest comments first? Or desc? Usually comments are chronological.
+            where("postId", "==", postId),
+            orderBy("createdAt", "asc") // Oldest comments first? Or desc? Usually comments are chronological.
         );
 
         const querySnapshot = await getDocs(q);

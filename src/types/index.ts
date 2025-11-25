@@ -29,19 +29,19 @@ export interface Group {
 }
 
 export interface Reply {
-    reply_id: string;
-    user_id: string;
+    replyId: string;
+    userId: string;
     text: string;
-    created_at: string; // ISO 8601 string
+    createdAt: string; // ISO 8601 string
 }
 
 export interface Comment {
-    comment_id: string;
-    post_id: string;
-    user_id: string;
-    user_display_name: string;
-    user_photo_url?: string;
+    commentId: string;
+    postId: string;
+    userId: string;
+    userDisplayName: string;
+    userPhotoUrl?: string;
     content: string;
-    created_at: string; // ISO 8601 string
+    createdAt: string; // ISO 8601 string
     replies: Reply[];
 }
