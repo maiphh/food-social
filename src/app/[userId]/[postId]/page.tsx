@@ -5,8 +5,11 @@ import { getPost } from '@/services/post';
 import { getUser } from '@/services/user';
 import { Post, User } from '@/types';
 import BottomNav from '@/components/BottomNav';
-import { ChevronLeft, ChevronRight, Star, User as UserIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, User as UserIcon, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getComments, createComment } from '@/services/comments';
+import { auth } from '@/lib/firebase';
+import { Comment } from '@/types';
 
 export default function PostPage({ params }: { params: Promise<{ userId: string; postId: string }> }) {
     const { userId, postId } = use(params);
@@ -14,6 +17,10 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
     const [author, setAuthor] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [submittingComment, setSubmittingComment] = useState(false);
+    const currentUser = auth.currentUser;
     const router = useRouter();
 
     useEffect(() => {
@@ -25,6 +32,10 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
                 if (fetchedPost) {
                     const fetchedAuthor = await getUser(fetchedPost.authorId);
                     setAuthor(fetchedAuthor);
+
+                    // Fetch comments
+                    const fetchedComments = await getComments(postId);
+                    setComments(fetchedComments);
                 }
             } catch (error) {
                 console.error('Error fetching post data:', error);
@@ -45,6 +56,40 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
     const prevImage = () => {
         if (post?.images) {
             setCurrentImageIndex((prev) => (prev - 1 + post.images!.length) % post.images!.length);
+        }
+    };
+
+    const handleAddComment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim() || !currentUser || !post) return;
+
+        setSubmittingComment(true);
+        try {
+            const commentData = {
+                post_id: post.id,
+                user_id: currentUser.uid,
+                user_display_name: currentUser.displayName || 'Anonymous',
+                user_photo_url: currentUser.photoURL || undefined,
+                content: newComment.trim(),
+            };
+
+            const commentId = await createComment(commentData);
+
+            // Optimistically update UI
+            const newCommentObj: Comment = {
+                ...commentData,
+                comment_id: commentId,
+                created_at: new Date().toISOString(),
+                replies: []
+            };
+
+            setComments([...comments, newCommentObj]);
+            setNewComment('');
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            alert('Failed to add comment');
+        } finally {
+            setSubmittingComment(false);
         }
     };
 
@@ -165,6 +210,79 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
                             {post.content}
                         </p>
                     </div>
+                </div>
+
+                {/* Comments Section */}
+                <div className="mt-6 bg-white rounded-xl shadow-sm overflow-hidden p-4">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments ({comments.length})</h2>
+
+                    {/* Comment List */}
+                    <div className="space-y-4 mb-6">
+                        {comments.length === 0 ? (
+                            <p className="text-gray-500 text-center py-4">No comments yet. Be the first to share your thoughts!</p>
+                        ) : (
+                            comments.map((comment) => (
+                                <div key={comment.comment_id} className="flex gap-3">
+                                    <div className="w-8 h-8 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                        {comment.user_photo_url ? (
+                                            <img src={comment.user_photo_url} alt={comment.user_display_name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <UserIcon className="w-4 h-4 text-gray-400" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 bg-gray-50 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="font-medium text-sm text-gray-900">{comment.user_display_name}</span>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(comment.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-800 text-sm">{comment.content}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Add Comment Form */}
+                    {currentUser ? (
+                        <form onSubmit={handleAddComment} className="flex gap-2 items-start">
+                            <div className="w-8 h-8 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
+                                {currentUser.photoURL ? (
+                                    <img src={currentUser.photoURL} alt={currentUser.displayName || 'User'} className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="w-4 h-4 text-gray-400" />
+                                )}
+                            </div>
+                            <div className="flex-1 relative">
+                                <input
+                                    type="text"
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="Write a comment..."
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-full px-4 py-2 pr-10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                    disabled={submittingComment}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!newComment.trim() || submittingComment}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-blue-500 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <p className="text-gray-600 text-sm mb-2">Please login to leave a comment</p>
+                            <button
+                                onClick={() => router.push('/login')}
+                                className="text-blue-600 font-medium text-sm hover:underline"
+                            >
+                                Login now
+                            </button>
+                        </div>
+                    )}
                 </div>
             </main>
 

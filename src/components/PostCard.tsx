@@ -1,13 +1,13 @@
 'use client';
 
 import { Post } from '@/types';
-import { Star, User as UserIcon, Trash2, Bookmark } from 'lucide-react';
+import { Star, User as UserIcon, Trash2, Bookmark, ThumbsUp, Heart, Smile, Frown, MessageCircle } from 'lucide-react';
 import { APP_CONFIG } from '@/config/settings';
 import { getUser } from '@/services/user';
 import { deletePost } from '@/services/post';
 import { savePost, unsavePost, isPostSaved } from '@/services/savedPost';
 import { auth } from '@/lib/firebase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface PostCardProps {
@@ -25,6 +25,49 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
     const [saveLoading, setSaveLoading] = useState(false);
     const currentUser = auth.currentUser;
     const isAuthor = currentUser?.uid === post.authorId;
+
+    // Reactions state
+    const [selectedReaction, setSelectedReaction] = useState<'like' | 'love' | 'haha' | 'sad' | null>(null);
+    const [showReactions, setShowReactions] = useState(false);
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+    const reactions = [
+        { id: 'like', icon: ThumbsUp, label: 'Like', color: 'text-blue-500' },
+        { id: 'love', icon: Heart, label: 'Love', color: 'text-red-500' },
+        { id: 'haha', icon: Smile, label: 'Haha', color: 'text-yellow-500' },
+        { id: 'sad', icon: Frown, label: 'Sad', color: 'text-yellow-600' },
+    ] as const;
+
+    const handleTouchStart = () => {
+        longPressTimer.current = setTimeout(() => {
+            setShowReactions(true);
+        }, 500); // 500ms for long press
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+        }
+    };
+
+    const handleReactionSelect = (e: React.MouseEvent, reactionId: typeof reactions[number]['id']) => {
+        e.stopPropagation();
+        setSelectedReaction(selectedReaction === reactionId ? null : reactionId);
+        setShowReactions(false);
+    };
+
+    const getReactionIcon = () => {
+        if (!selectedReaction) return <ThumbsUp className="w-5 h-5" />;
+        const reaction = reactions.find(r => r.id === selectedReaction);
+        const Icon = reaction?.icon || ThumbsUp;
+        return <Icon className={`w-5 h-5 ${reaction?.color} fill-current`} />;
+    };
+
+    const getReactionLabel = () => {
+        if (!selectedReaction) return 'Like';
+        const reaction = reactions.find(r => r.id === selectedReaction);
+        return reaction?.label || 'Like';
+    };
 
     // Fetch author's display name and photo
     useEffect(() => {
@@ -187,6 +230,64 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Reactions and Comments Section */}
+            <div className="px-4 pb-2">
+                <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
+                    {/* Like / Reactions Button */}
+                    <div
+                        className="relative group"
+                        onMouseLeave={() => setShowReactions(false)}
+                    >
+                        {/* Reactions Popup */}
+                        <div className={`
+                                absolute bottom-full left-0 pb-2 transition-all duration-200 origin-bottom-left z-10
+                                ${showReactions ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}
+                            `}>
+                            <div className="bg-white rounded-full shadow-lg border border-gray-100 p-1 flex gap-2">
+                                {reactions.map((reaction) => (
+                                    <button
+                                        key={reaction.id}
+                                        onClick={(e) => handleReactionSelect(e, reaction.id)}
+                                        className="p-2 hover:bg-gray-50 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                                        title={reaction.label}
+                                    >
+                                        <reaction.icon className={`w-6 h-6 ${reaction.color} ${selectedReaction === reaction.id ? 'fill-current' : ''}`} />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors ${selectedReaction ? reactions.find(r => r.id === selectedReaction)?.color : 'text-gray-600'}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!selectedReaction) setSelectedReaction('like');
+                                else setSelectedReaction(null);
+                            }}
+                            onMouseEnter={() => setShowReactions(true)}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                        >
+                            {getReactionIcon()}
+                            <span className="font-medium">{getReactionLabel()}</span>
+                        </button>
+                    </div>
+
+                    {/* Comment Button */}
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleClick();
+                        }}
+                    >
+                        <MessageCircle className="w-5 h-5" />
+                        <span className="font-medium">Comment</span>
+                    </button>
+                </div>
+
             </div>
         </div>
     );

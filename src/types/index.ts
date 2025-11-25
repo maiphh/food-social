@@ -27,3 +27,21 @@ export interface Group {
     members: string[];
     isPrivate: boolean;
 }
+
+export interface Reply {
+    reply_id: string;
+    user_id: string;
+    text: string;
+    created_at: string; // ISO 8601 string
+}
+
+export interface Comment {
+    comment_id: string;
+    post_id: string;
+    user_id: string;
+    user_display_name: string;
+    user_photo_url?: string;
+    content: string;
+    created_at: string; // ISO 8601 string
+    replies: Reply[];
+}
