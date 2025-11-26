@@ -9,9 +9,10 @@ import { toggleReaction, getUserReactionOnPost, ReactionType } from '@/services/
 interface PostActionsProps {
     postId: string;
     onCommentClick?: () => void;
+    onReactionChange?: (oldReaction: ReactionType | null, newReaction: ReactionType | null) => void;
 }
 
-export default function PostActions({ postId, onCommentClick }: PostActionsProps) {
+export default function PostActions({ postId, onCommentClick, onReactionChange }: PostActionsProps) {
     const currentUser = auth.currentUser;
     const [isSaved, setIsSaved] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
@@ -66,12 +67,14 @@ export default function PostActions({ postId, onCommentClick }: PostActionsProps
         try {
             // If clicking the same reaction, toggle it off
             if (selectedReaction === reactionId) {
+                if (onReactionChange) onReactionChange(selectedReaction, null);
+                setSelectedReaction(null); // Optimistic update
                 await toggleReaction(postId, currentUser.uid, reactionId);
-                setSelectedReaction(null);
             } else {
                 // Otherwise, set the new reaction
+                if (onReactionChange) onReactionChange(selectedReaction, reactionId);
+                setSelectedReaction(reactionId); // Optimistic update
                 await toggleReaction(postId, currentUser.uid, reactionId);
-                setSelectedReaction(reactionId);
             }
             setShowReactions(false);
         } catch (error) {
@@ -155,12 +158,14 @@ export default function PostActions({ postId, onCommentClick }: PostActionsProps
                         try {
                             if (!selectedReaction) {
                                 // Add 'like' reaction
+                                if (onReactionChange) onReactionChange(null, 'like');
+                                setSelectedReaction('like'); // Optimistic update
                                 await toggleReaction(postId, currentUser.uid, 'like');
-                                setSelectedReaction('like');
                             } else {
                                 // Remove current reaction
+                                if (onReactionChange) onReactionChange(selectedReaction, null);
+                                setSelectedReaction(null); // Optimistic update
                                 await toggleReaction(postId, currentUser.uid, selectedReaction);
-                                setSelectedReaction(null);
                             }
                         } catch (error) {
                             console.error("Error toggling reaction:", error);

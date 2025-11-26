@@ -10,7 +10,8 @@ import {
     query,
     where,
     orderBy,
-    getDocs
+    getDocs,
+    increment
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Comment, Reply } from "@/types";
@@ -27,6 +28,12 @@ export const createComment = async (data: Omit<Comment, "commentId" | "replies" 
         // Update the document with its own ID as commentId
         await updateDoc(docRef, {
             commentId: docRef.id
+        });
+
+        // Increment comment count on the post
+        const postRef = doc(db, "posts", data.postId);
+        await updateDoc(postRef, {
+            commentCount: increment(1)
         });
 
         return docRef.id;

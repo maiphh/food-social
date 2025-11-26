@@ -18,6 +18,8 @@ export interface Post {
     visibility: 'public' | 'private' | 'group';
     groupId?: string;
     createdAt: number;
+    commentCount?: number;
+    reactionCount?: Record<string, number>;
 }
 
 export interface Group {

@@ -6,7 +6,9 @@ import {
     query,
     where,
     getDocs,
-    getDoc
+    getDoc,
+    updateDoc,
+    increment
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -49,6 +51,13 @@ export const addReaction = async (
         };
 
         const docRef = await addDoc(collection(db, "reactions"), reactionData);
+
+        // Update post reaction count
+        const postRef = doc(db, "posts", postId);
+        await updateDoc(postRef, {
+            [`reactionCount.${type}`]: increment(1)
+        });
+
         return docRef.id;
     } catch (error) {
         console.error("Error adding reaction: ", error);
@@ -62,7 +71,19 @@ export const addReaction = async (
  */
 export const removeReaction = async (reactionId: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, "reactions", reactionId));
+        const reactionRef = doc(db, "reactions", reactionId);
+        const reactionSnap = await getDoc(reactionRef);
+
+        if (reactionSnap.exists()) {
+            const reactionData = reactionSnap.data() as Reaction;
+            await deleteDoc(reactionRef);
+
+            // Decrement post reaction count
+            const postRef = doc(db, "posts", reactionData.postId);
+            await updateDoc(postRef, {
+                [`reactionCount.${reactionData.type}`]: increment(-1)
+            });
+        }
     } catch (error) {
         console.error("Error removing reaction: ", error);
         throw error;
@@ -186,4 +207,14 @@ export const toggleReaction = async (
         console.error("Error toggling reaction: ", error);
         throw error;
     }
+};
+
+/**
+ * Calculate total number of reactions from reaction counts object
+ * @param reactionCount - The reaction counts object
+ * @returns Total number of reactions
+ */
+export const calculateTotalReactions = (reactionCount?: Record<string, number>): number => {
+    if (!reactionCount) return 0;
+    return Object.values(reactionCount).reduce((sum, count) => sum + count, 0);
 };
