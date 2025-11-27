@@ -22,11 +22,18 @@ export interface Post {
     reactionCount?: Record<string, number>;
 }
 
+export enum GroupRole {
+    OWNER = 'owner',
+    ADMIN = 'admin',
+    MEMBER = 'member'
+}
+
 export interface Group {
     id: string;
     name: string;
     ownerId: string;
     members: string[];
+    roles: Record<string, GroupRole>;
     isPrivate: boolean;
 }
 

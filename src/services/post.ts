@@ -65,3 +65,14 @@ export const getPost = async (postId: string): Promise<Post | null> => {
         return null;
     }
 };
+
+export const getGroupPosts = async (groupId: string): Promise<Post[]> => {
+    const q = query(
+        collection(db, "posts"),
+        where("groupId", "==", groupId),
+        orderBy("createdAt", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Post));
+};

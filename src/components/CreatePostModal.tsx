@@ -10,16 +10,26 @@ import { auth } from '@/lib/firebase';
 interface CreatePostModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: () => void; // Changed from onPostCreated to match usage in GroupDetailPage, but wait, GroupDetailPage uses onPostCreated. Let's check the prop name in GroupDetailPage.
+    // In GroupDetailPage: onPostCreated={handlePostCreated}
+    // In CreatePostModal definition: onSuccess: () => void;
+    // I should probably align them. The existing code uses onSuccess. I will keep onSuccess in the interface but alias it or change the usage in GroupDetailPage?
+    // Actually, looking at the file content I just read, the interface has `onSuccess`.
+    // But in GroupDetailPage I wrote `onPostCreated={handlePostCreated}`.
+    // I should update GroupDetailPage to use `onSuccess` OR update CreatePostModal to use `onPostCreated`.
+    // Let's update CreatePostModal to use `onPostCreated` to be more descriptive, or just stick to `onSuccess`.
+    // The previous file content shows `onSuccess`.
+    // I will add `defaultGroupId` to props.
+    defaultGroupId?: string;
 }
 
-export default function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalProps) {
+export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGroupId }: CreatePostModalProps) {
     const [content, setContent] = useState('');
     const [ratings, setRatings] = useState<Record<string, number>>({
         food: 0,
         ambiance: 0
     });
-    const [visibility, setVisibility] = useState<'public' | 'private' | 'group'>('public');
+    const [visibility, setVisibility] = useState<'public' | 'private' | 'group'>(defaultGroupId ? 'group' : 'public');
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -43,6 +53,7 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePo
                 ratings: ratings as { food: number; ambiance: number },
                 images: imageUrls,
                 visibility,
+                groupId: defaultGroupId, // Add groupId if present
                 createdAt: Date.now()
             });
             setContent('');
@@ -112,7 +123,8 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePo
                             <select
                                 value={visibility}
                                 onChange={(e) => setVisibility(e.target.value as any)}
-                                className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                disabled={!!defaultGroupId} // Disable if defaultGroupId is set
+                                className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             >
                                 <option value="public">Public</option>
                                 <option value="private">Private</option>

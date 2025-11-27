@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { signInWithGoogle } from '@/services/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_CONFIG } from '@/config/settings';
 import { LogIn } from 'lucide-react';
 
@@ -10,13 +10,15 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const handleLogin = async () => {
         setLoading(true);
         setError(null);
         try {
             await signInWithGoogle();
-            router.push('/feed');
+            const redirectUrl = searchParams.get('redirect');
+            router.push(redirectUrl || '/feed');
         } catch (err) {
             setError('Failed to sign in. Please try again.');
             console.error(err);

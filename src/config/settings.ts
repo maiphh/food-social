@@ -15,6 +15,7 @@ export const APP_CONFIG = {
     },
     navLinks: [
         { href: '/feed', label: 'Feed' },
+        { href: '/groups', label: 'Groups' },
         { href: '/profile', label: 'Profile' }
     ]
 };
