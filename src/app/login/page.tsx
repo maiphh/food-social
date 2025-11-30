@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signInWithGoogle } from '@/services/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_CONFIG } from '@/config/settings';
 import { LogIn } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -82,5 +82,17 @@ export default function LoginPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }
