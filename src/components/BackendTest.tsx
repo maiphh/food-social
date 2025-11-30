@@ -53,7 +53,7 @@ export default function BackendTest() {
             const postId = await createPost({
                 authorId: currentUser.uid,
                 content: "Test post content " + Date.now(),
-                ratings: { food: 5, ambiance: 4 },
+                ratings: { food: 5, ambiance: 4, overall: 5 },
                 images: [],
                 visibility: "public",
                 createdAt: Date.now(),

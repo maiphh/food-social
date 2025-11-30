@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Post, User } from '@/types';
-import { ChevronLeft, ChevronRight, Star, User as UserIcon, ThumbsUp, Heart, Smile, Frown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, User as UserIcon, ThumbsUp, Heart, Smile, Frown, MapPin, DollarSign, ThumbsDown } from 'lucide-react';
+import { APP_CONFIG } from '@/config/settings';
 import PostActions from './PostActions';
 import { calculateTotalReactions, ReactionType } from '@/services/reaction';
 
@@ -123,20 +124,41 @@ export default function PostDetail({ post, author, onAuthorClick, onCommentClick
 
                 {/* Ratings */}
                 <div className="flex gap-4 mb-4">
-                    <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium text-gray-600">Food</span>
-                        <div className="flex items-center text-yellow-400">
-                            <span className="font-bold ml-1 text-gray-900">{post.ratings.food}</span>
-                            <Star className="w-3 h-3 fill-current ml-0.5" />
+                    {APP_CONFIG.ratingCategories.map((category) => (
+                        <div key={category.id} className="flex items-center gap-1">
+                            <span className="text-sm font-medium text-gray-600">{category.label}</span>
+                            <div className="flex items-center text-yellow-400">
+                                <span className="font-bold ml-1 text-gray-900">
+                                    {post.ratings[category.id as keyof typeof post.ratings] || 0}
+                                </span>
+                                <Star className="w-3 h-3 fill-current ml-0.5" />
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium text-gray-600">Ambiance</span>
-                        <div className="flex items-center text-yellow-400">
-                            <span className="font-bold ml-1 text-gray-900">{post.ratings.ambiance}</span>
-                            <Star className="w-3 h-3 fill-current ml-0.5" />
+                    ))}
+                </div>
+
+                {/* Additional Info */}
+                <div className="flex flex-wrap gap-4 mb-4 text-sm text-gray-600">
+                    {post.address && (
+                        <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span>{post.address}</span>
                         </div>
-                    </div>
+                    )}
+                    {post.priceRange && (
+                        <div className="flex items-center gap-1.5">
+                            <DollarSign className="w-4 h-4 text-gray-400" />
+                            <span>{post.priceRange}</span>
+                        </div>
+                    )}
+                    {post.recommendation && (
+                        <div className="flex items-center gap-1.5">
+                            {post.recommendation === 'not-recommend' && <ThumbsDown className="w-4 h-4 text-red-500" />}
+                            {post.recommendation === 'recommend' && <ThumbsUp className="w-4 h-4 text-blue-500" />}
+                            {post.recommendation === 'highly-recommend' && <ThumbsUp className="w-4 h-4 text-green-500" />}
+                            <span className="capitalize">{post.recommendation.replace('-', ' ')}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Description */}

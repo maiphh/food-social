@@ -13,6 +13,7 @@ export interface Post {
     ratings: {
         food: number;
         ambiance: number;
+        overall: number;
     };
     images: string[];
     visibility: 'public' | 'private' | 'group';
@@ -20,6 +21,9 @@ export interface Post {
     createdAt: number;
     commentCount?: number;
     reactionCount?: Record<string, number>;
+    address?: string;
+    priceRange?: string;
+    recommendation?: 'not-recommend' | 'recommend' | 'highly-recommend';
 }
 
 export enum GroupRole {

@@ -27,8 +27,12 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
     const [content, setContent] = useState('');
     const [ratings, setRatings] = useState<Record<string, number>>({
         food: 0,
-        ambiance: 0
+        ambiance: 0,
+        overall: 0
     });
+    const [address, setAddress] = useState('');
+    const [priceRange, setPriceRange] = useState('');
+    const [recommendation, setRecommendation] = useState<'not-recommend' | 'recommend' | 'highly-recommend' | ''>('');
     const [visibility, setVisibility] = useState<'public' | 'private' | 'group'>(defaultGroupId ? 'group' : 'public');
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [loading, setLoading] = useState(false);
@@ -50,14 +54,20 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
             await createPost({
                 authorId: auth.currentUser.uid,
                 content,
-                ratings: ratings as { food: number; ambiance: number },
+                ratings: ratings as { food: number; ambiance: number; overall: number },
                 images: imageUrls,
                 visibility,
-                groupId: defaultGroupId, // Add groupId if present
-                createdAt: Date.now()
+                ...(defaultGroupId ? { groupId: defaultGroupId } : {}), // Add groupId if present
+                createdAt: Date.now(),
+                address,
+                priceRange,
+                recommendation: recommendation as 'not-recommend' | 'recommend' | 'highly-recommend'
             });
             setContent('');
-            setRatings({ food: 0, ambiance: 0 });
+            setAddress('');
+            setPriceRange('');
+            setRecommendation('');
+            setRatings({ food: 0, ambiance: 0, overall: 0 });
             setSelectedImages([]);
             onSuccess();
             onClose();
@@ -92,6 +102,39 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
                         className="w-full h-32 p-3 bg-gray-50 rounded-lg border-none resize-none focus:ring-2 focus:ring-blue-500 mb-4"
                         required
                     />
+
+                    <div className="space-y-4 mb-4">
+                        <input
+                            type="text"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            placeholder="Address"
+                            className="w-full p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex gap-4">
+                            <select
+                                value={priceRange}
+                                onChange={(e) => setPriceRange(e.target.value)}
+                                className="flex-1 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Price Range</option>
+                                <option value="$">$</option>
+                                <option value="$$">$$</option>
+                                <option value="$$$">$$$</option>
+                                <option value="$$$$">$$$$</option>
+                            </select>
+                            <select
+                                value={recommendation}
+                                onChange={(e) => setRecommendation(e.target.value as any)}
+                                className="flex-1 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Recommendation</option>
+                                <option value="not-recommend">Not Recommend</option>
+                                <option value="recommend">Recommend</option>
+                                <option value="highly-recommend">Highly Recommend</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <div className="space-y-4 mb-6">
                         {APP_CONFIG.ratingCategories.map((category) => (

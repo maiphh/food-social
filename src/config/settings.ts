@@ -3,7 +3,8 @@ export const APP_CONFIG = {
     maxPostLength: 500,
     ratingCategories: [
         { id: 'food', label: 'Food' },
-        { id: 'ambiance', label: 'Ambiance' }
+        { id: 'ambiance', label: 'Ambiance' },
+        { id: 'overall', label: 'Overall' }
     ],
     defaultVisibility: 'public',
     placeholders: {
