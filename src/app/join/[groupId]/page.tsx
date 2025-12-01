@@ -48,7 +48,7 @@ export default function JoinGroupPage() {
                     <h2 className="text-xl font-bold text-gray-900 mb-2">Error Joining Group</h2>
                     <p className="text-gray-600 mb-6">{error}</p>
                     <button
-                        onClick={() => router.push('/feed')}
+                        onClick={() => router.push('/')}
                         className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                         Go to Feed

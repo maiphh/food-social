@@ -58,7 +58,7 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
                 <div className="text-center">
                     <p className="text-gray-500 mb-4">Post not found.</p>
                     <button
-                        onClick={() => router.push('/feed')}
+                        onClick={() => router.push('/')}
                         className="text-blue-600 font-medium hover:underline"
                     >
                         Go to Feed

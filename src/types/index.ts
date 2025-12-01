@@ -22,7 +22,8 @@ export interface Post {
     commentCount?: number;
     reactionCount?: Record<string, number>;
     address?: string;
-    priceRange?: string;
+    priceMin?: number;
+    priceMax?: number;
     recommendation?: 'not-recommend' | 'recommend' | 'highly-recommend';
 }
 
@@ -39,6 +40,7 @@ export interface Group {
     members: string[];
     roles: Record<string, GroupRole>;
     isPrivate: boolean;
+    imageUrl?: string;
 }
 
 export interface Reply {

@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getUserGroups } from '@/services/group';
 import { Group } from '@/types';
 import BottomNav from '@/components/BottomNav';
+import GroupCard from '@/components/GroupCard';
 import Link from 'next/link';
 
 export default function GroupsPage() {
@@ -60,14 +61,7 @@ export default function GroupsPage() {
                     </div>
                 ) : (
                     groups.map(group => (
-                        <Link key={group.id} href={`/groups/${group.id}`}>
-                            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center justify-between">
-                                <div>
-                                    <h3 className="font-semibold text-lg">{group.name}</h3>
-                                    <p className="text-sm text-gray-500">{group.members.length} members</p>
-                                </div>
-                            </div>
-                        </Link>
+                        <GroupCard key={group.id} group={group} />
                     ))
                 )}
             </div>

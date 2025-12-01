@@ -47,7 +47,7 @@ export default function CommentsSection({ postId, initialComments = [] }: Commen
                 postId: postId,
                 userId: currentUser.uid,
                 userDisplayName: currentUser.displayName || 'Anonymous',
-                userPhotoUrl: currentUser.photoURL || undefined,
+                userPhotoUrl: currentUser.photoURL || "",
                 content: newComment.trim(),
             };
 

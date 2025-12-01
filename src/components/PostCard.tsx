@@ -10,6 +10,7 @@ import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PostActions from './PostActions';
+import CreatePostModal from './CreatePostModal';
 
 interface PostCardProps {
     post: Post;
@@ -26,6 +27,7 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
     const isAuthor = currentUser?.uid === post.authorId;
 
     const [showMenu, setShowMenu] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(post.reactionCount || {});
     const [commentCount, setCommentCount] = useState(post.commentCount || 0);
 
@@ -155,8 +157,7 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMenu(false);
-                                            // TODO: Implement edit functionality
-                                            alert('Edit functionality coming soon!');
+                                            setShowEditModal(true);
                                         }}
                                         className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                     >
@@ -263,6 +264,18 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
                     onReactionChange={handleReactionChange}
                 />
             </div>
+
+            {/* Edit Modal */}
+            <CreatePostModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onSuccess={() => {
+                    setShowEditModal(false);
+                    // Trigger parent refresh if needed
+                    if (onDelete) onDelete();
+                }}
+                post={post}
+            />
         </div>
     );
 }

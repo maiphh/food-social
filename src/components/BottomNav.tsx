@@ -15,7 +15,7 @@ export default function BottomNav() {
             <div className="flex justify-around items-center h-16">
                 {APP_CONFIG.navLinks.map((link) => {
                     const isActive = pathname === link.href || (link.href === '/profile' && pathname.startsWith(`/${user?.uid}`));
-                    const Icon = link.href === '/feed' ? Home : User;
+                    const Icon = link.href === '/' ? Home : User;
                     const href = link.href === '/profile' ? (user ? `/${user.uid}` : '/login') : link.href;
 
                     return (

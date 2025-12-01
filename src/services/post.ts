@@ -8,7 +8,8 @@ import {
     getDocs,
     deleteDoc,
     doc,
-    getDoc
+    getDoc,
+    updateDoc
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Post } from "@/types";
@@ -19,6 +20,17 @@ export const createPost = async (postData: Omit<Post, "id">) => {
         return docRef.id;
     } catch (error) {
         console.error("Error adding post: ", error);
+        throw error;
+    }
+};
+
+export const updatePost = async (postId: string, postData: Partial<Omit<Post, "id">>) => {
+    try {
+        const postRef = doc(db, "posts", postId);
+        await updateDoc(postRef, postData);
+        return postId;
+    } catch (error) {
+        console.error("Error updating post: ", error);
         throw error;
     }
 };

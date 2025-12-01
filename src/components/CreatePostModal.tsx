@@ -1,29 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { createPost } from '@/services/post';
+import { useState, useEffect } from 'react';
+import { createPost, updatePost } from '@/services/post';
 import { uploadImage } from '@/services/cloudinary';
 import { APP_CONFIG } from '@/config/settings';
 import { X, Star, Image as ImageIcon } from 'lucide-react';
 import { auth } from '@/lib/firebase';
+import { Post } from '@/types';
 
 interface CreatePostModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess: () => void; // Changed from onPostCreated to match usage in GroupDetailPage, but wait, GroupDetailPage uses onPostCreated. Let's check the prop name in GroupDetailPage.
-    // In GroupDetailPage: onPostCreated={handlePostCreated}
-    // In CreatePostModal definition: onSuccess: () => void;
-    // I should probably align them. The existing code uses onSuccess. I will keep onSuccess in the interface but alias it or change the usage in GroupDetailPage?
-    // Actually, looking at the file content I just read, the interface has `onSuccess`.
-    // But in GroupDetailPage I wrote `onPostCreated={handlePostCreated}`.
-    // I should update GroupDetailPage to use `onSuccess` OR update CreatePostModal to use `onPostCreated`.
-    // Let's update CreatePostModal to use `onPostCreated` to be more descriptive, or just stick to `onSuccess`.
-    // The previous file content shows `onSuccess`.
-    // I will add `defaultGroupId` to props.
+    onSuccess: () => void;
     defaultGroupId?: string;
+    post?: Post; // Optional post for editing
 }
 
-export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGroupId }: CreatePostModalProps) {
+
+export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGroupId, post }: CreatePostModalProps) {
     const [content, setContent] = useState('');
     const [ratings, setRatings] = useState<Record<string, number>>({
         food: 0,
@@ -31,11 +25,38 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
         overall: 0
     });
     const [address, setAddress] = useState('');
-    const [priceRange, setPriceRange] = useState('');
+    const [priceMin, setPriceMin] = useState('');
+    const [priceMax, setPriceMax] = useState('');
     const [recommendation, setRecommendation] = useState<'not-recommend' | 'recommend' | 'highly-recommend' | ''>('');
     const [visibility, setVisibility] = useState<'public' | 'private' | 'group'>(defaultGroupId ? 'group' : 'public');
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Populate form when editing
+    useEffect(() => {
+        if (post) {
+            setContent(post.content || '');
+            setRatings(post.ratings || { food: 0, ambiance: 0, overall: 0 });
+            setAddress(post.address || '');
+            setPriceMin(post.priceMin?.toString() || '');
+            setPriceMax(post.priceMax?.toString() || '');
+            setRecommendation(post.recommendation || '');
+            setVisibility(post.visibility || 'public');
+            setExistingImageUrls(post.images || []);
+        } else {
+            // Reset form for create mode
+            setContent('');
+            setRatings({ food: 0, ambiance: 0, overall: 0 });
+            setAddress('');
+            setPriceMin('');
+            setPriceMax('');
+            setRecommendation('');
+            setVisibility(defaultGroupId ? 'group' : 'public');
+            setExistingImageUrls([]);
+            setSelectedImages([]);
+        }
+    }, [post, defaultGroupId]);
 
     if (!isOpen) return null;
 
@@ -48,32 +69,55 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
 
         setLoading(true);
         try {
+            // Upload new images if any
             const uploadPromises = selectedImages.map(image => uploadImage(image));
-            const imageUrls = await Promise.all(uploadPromises);
+            const newImageUrls = await Promise.all(uploadPromises);
 
-            await createPost({
+            // Combine existing images with new images
+            const allImageUrls = [...existingImageUrls, ...newImageUrls];
+
+            const postData = {
                 authorId: auth.currentUser.uid,
                 content,
                 ratings: ratings as { food: number; ambiance: number; overall: number },
-                images: imageUrls,
+                images: allImageUrls,
                 visibility,
-                ...(defaultGroupId ? { groupId: defaultGroupId } : {}), // Add groupId if present
-                createdAt: Date.now(),
+                ...(defaultGroupId ? { groupId: defaultGroupId } : {}),
                 address,
-                priceRange,
+                priceMin: priceMin ? Number(priceMin) : 0,
+                priceMax: priceMax ? Number(priceMax) : 0,
                 recommendation: recommendation as 'not-recommend' | 'recommend' | 'highly-recommend'
-            });
-            setContent('');
-            setAddress('');
-            setPriceRange('');
-            setRecommendation('');
-            setRatings({ food: 0, ambiance: 0, overall: 0 });
-            setSelectedImages([]);
-            onSuccess();
-            onClose();
+            };
+
+            // Check if we're editing or creating
+            if (post?.id) {
+                // EDIT MODE: Update existing post
+                await updatePost(post.id, postData);
+                // Show success message (you can add a toast notification here)
+                alert('Post updated successfully!');
+                onSuccess();
+                // Don't close modal or clear form in edit mode
+            } else {
+                // CREATE MODE: Create new post
+                await createPost({
+                    ...postData,
+                    createdAt: Date.now()
+                });
+                // Clear form
+                setContent('');
+                setAddress('');
+                setPriceMin('');
+                setPriceMax('');
+                setRecommendation('');
+                setRatings({ food: 0, ambiance: 0, overall: 0 });
+                setSelectedImages([]);
+                setExistingImageUrls([]);
+                onSuccess();
+                onClose();
+            }
         } catch (error) {
-            console.error('Error creating post:', error);
-            alert('Failed to create post');
+            console.error('Error saving post:', error);
+            alert(post?.id ? 'Failed to update post' : 'Failed to create post');
         } finally {
             setLoading(false);
         }
@@ -84,10 +128,19 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+            }}
+        >
+            <div
+                className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="flex items-center justify-between p-4 border-b">
-                    <h2 className="text-lg font-semibold">Create Review</h2>
+                    <h2 className="text-lg font-semibold">{post ? 'Edit Review' : 'Create Review'}</h2>
                     <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
@@ -112,17 +165,22 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
                             className="w-full p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
                         />
                         <div className="flex gap-4">
-                            <select
-                                value={priceRange}
-                                onChange={(e) => setPriceRange(e.target.value)}
-                                className="flex-1 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Price Range</option>
-                                <option value="$">$</option>
-                                <option value="$$">$$</option>
-                                <option value="$$$">$$$</option>
-                                <option value="$$$$">$$$$</option>
-                            </select>
+                            <div className="flex-1 flex gap-2">
+                                <input
+                                    type="number"
+                                    value={priceMin}
+                                    onChange={(e) => setPriceMin(e.target.value)}
+                                    placeholder="Min Price"
+                                    className="w-full p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    type="number"
+                                    value={priceMax}
+                                    onChange={(e) => setPriceMax(e.target.value)}
+                                    placeholder="Max Price"
+                                    className="w-full p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
                             <select
                                 value={recommendation}
                                 onChange={(e) => setRecommendation(e.target.value as any)}
@@ -160,6 +218,46 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
                             </div>
                         ))}
                     </div>
+
+                    {/* Image Previews */}
+                    {(existingImageUrls.length > 0 || selectedImages.length > 0) && (
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                            {/* Existing images */}
+                            {existingImageUrls.map((url, index) => (
+                                <div key={`existing-${index}`} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden group">
+                                    <img
+                                        src={url}
+                                        alt={`Existing ${index}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setExistingImageUrls(prev => prev.filter((_, i) => i !== index))}
+                                        className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                            {/* New images */}
+                            {selectedImages.map((image, index) => (
+                                <div key={`new-${index}`} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden group">
+                                    <img
+                                        src={URL.createObjectURL(image)}
+                                        alt={`Preview ${index}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))}
+                                        className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-4 border-t">
                         <div className="flex gap-2">
@@ -204,7 +302,7 @@ export default function CreatePostModal({ isOpen, onClose, onSuccess, defaultGro
                             disabled={loading || !content.trim()}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            {loading ? 'Posting...' : 'Post Review'}
+                            {loading ? (post ? 'Updating...' : 'Posting...') : (post ? 'Update Review' : 'Post Review')}
                         </button>
                     </div>
                 </form>

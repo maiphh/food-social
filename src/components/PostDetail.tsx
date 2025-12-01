@@ -145,10 +145,16 @@ export default function PostDetail({ post, author, onAuthorClick, onCommentClick
                             <span>{post.address}</span>
                         </div>
                     )}
-                    {post.priceRange && (
+                    {(post.priceMin || post.priceMax) && (
                         <div className="flex items-center gap-1.5">
                             <DollarSign className="w-4 h-4 text-gray-400" />
-                            <span>{post.priceRange}</span>
+                            <span>
+                                {post.priceMin && post.priceMax
+                                    ? `${post.priceMin} - ${post.priceMax}`
+                                    : post.priceMin
+                                        ? `Min ${post.priceMin}`
+                                        : `Max ${post.priceMax}`}
+                            </span>
                         </div>
                     )}
                     {post.recommendation && (

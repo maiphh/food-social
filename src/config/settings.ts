@@ -15,7 +15,7 @@ export const APP_CONFIG = {
         emptySaved: "No saved places yet."
     },
     navLinks: [
-        { href: '/feed', label: 'Feed' },
+        { href: '/', label: 'Feed' },
         { href: '/groups', label: 'Groups' },
         { href: '/profile', label: 'Profile' }
     ]

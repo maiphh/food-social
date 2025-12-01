@@ -131,7 +131,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div className="text-center">
                     <p className="text-gray-500 mb-4">User not found.</p>
                     <button
-                        onClick={() => router.push('/feed')}
+                        onClick={() => router.push('/')}
                         className="text-blue-600 font-medium hover:underline"
                     >
                         Go to Feed
