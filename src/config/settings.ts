@@ -6,6 +6,12 @@ export const APP_CONFIG = {
         { id: 'ambiance', label: 'Ambiance' },
         { id: 'overall', label: 'Overall' }
     ],
+    reactions: [
+        { id: 'like', emoji: '👍' },
+        { id: 'love', emoji: '❤️' },
+        { id: 'haha', emoji: '😄' },
+        { id: 'sad', emoji: '😢' },
+    ] as const,
     defaultVisibility: 'public',
     placeholders: {
         createPost: "What did you eat today?",

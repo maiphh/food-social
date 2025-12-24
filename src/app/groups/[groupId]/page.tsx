@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Plus, Settings } from 'lucide-react';
+import { ArrowLeft, Settings, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { getGroup } from '@/services/group';
 import { getGroupPosts } from '@/services/post';
@@ -11,6 +11,10 @@ import PostCard from '@/components/PostCard';
 import CreatePostModal from '@/components/CreatePostModal';
 import BottomNav from '@/components/BottomNav';
 import GroupManagementModal from '@/components/GroupManagementModal';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Users } from 'lucide-react';
 
 export default function GroupDetailPage() {
     const [group, setGroup] = useState<Group | null>(null);
@@ -25,17 +29,11 @@ export default function GroupDetailPage() {
 
     useEffect(() => {
         if (authLoading) return;
-        if (!user || !groupId) {
-            setLoading(false);
-            return;
-        }
+        if (!user || !groupId) { setLoading(false); return; }
 
         const fetchData = async () => {
             try {
-                const [groupData, groupPosts] = await Promise.all([
-                    getGroup(groupId),
-                    getGroupPosts(groupId)
-                ]);
+                const [groupData, groupPosts] = await Promise.all([getGroup(groupId), getGroupPosts(groupId)]);
                 setGroup(groupData);
                 setPosts(groupPosts);
             } catch (error) {
@@ -49,70 +47,83 @@ export default function GroupDetailPage() {
     }, [user, groupId, authLoading]);
 
     const handlePostCreated = () => {
-        // Refresh posts
         getGroupPosts(groupId).then(setPosts);
         setIsCreateModalOpen(false);
     };
 
     if (loading) {
-        return <div className="flex justify-center p-8">Loading...</div>;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Spinner size="lg" />
+            </div>
+        );
     }
 
     if (!group) {
-        return <div className="p-8 text-center">Group not found</div>;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="text-center">
+                    <p className="text-muted-foreground mb-4">Group not found</p>
+                    <Button variant="link" onClick={() => router.push('/groups')}>Back to Groups</Button>
+                </div>
+            </div>
+        );
     }
 
     const currentUserRole = user ? (group.roles[user.uid] as GroupRole) : null;
-    const canManage = currentUserRole === GroupRole.OWNER || currentUserRole === GroupRole.ADMIN;
 
     return (
-        <div className="pb-20">
-            <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => router.back()}>
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <div>
-                        <h1 className="text-lg font-bold">{group.name}</h1>
-                        <p className="text-xs text-gray-500">{group.members.length} members</p>
+        <div className="min-h-screen bg-background pb-20">
+            {/* Header */}
+            <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-xl border-b border-border/50">
+                <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9">
+                            <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={group.imageUrl || undefined} />
+                                <AvatarFallback><Users className="w-4 h-4" /></AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                                <h1 className="text-sm font-semibold truncate">{group.name}</h1>
+                                <p className="text-[10px] text-muted-foreground">{group.members.length} members</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    {currentUserRole && (
-                        <button
-                            onClick={() => setIsManagementModalOpen(true)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full"
-                            title="Group Members"
-                        >
-                            <Settings className="w-5 h-5" />
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="text-blue-600 font-medium text-sm"
-                    >
-                        Create Post
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {currentUserRole && (
+                            <Button variant="ghost" size="icon" onClick={() => setIsManagementModalOpen(true)} className="h-9 w-9">
+                                <Settings className="w-4 h-4" />
+                            </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => setIsCreateModalOpen(true)} className="h-9 w-9">
+                            <Plus className="w-5 h-5" />
+                        </Button>
+                    </div>
                 </div>
             </header>
 
-            <div className="max-w-md mx-auto">
+            <main className="max-w-2xl mx-auto px-4 py-4">
                 {posts.length === 0 ? (
-                    <div className="text-center text-gray-500 mt-10 p-4">
-                        <p>No posts yet.</p>
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="text-blue-500 font-medium mt-2"
-                        >
-                            Be the first to post!
-                        </button>
+                    <div className="text-center py-16 space-y-3">
+                        <div className="w-16 h-16 mx-auto rounded-full bg-muted flex items-center justify-center">
+                            <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-muted-foreground text-sm">No posts yet in this group</p>
+                        <Button variant="outline" onClick={() => setIsCreateModalOpen(true)}>
+                            Be the first to post
+                        </Button>
                     </div>
                 ) : (
-                    posts.map(post => (
-                        <PostCard key={post.id} post={post} />
+                    posts.map((post, i) => (
+                        <div key={post.id} className="animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 50}ms` }}>
+                            <PostCard post={post} />
+                        </div>
                     ))
                 )}
-            </div>
+            </main>
 
             {isCreateModalOpen && (
                 <CreatePostModal

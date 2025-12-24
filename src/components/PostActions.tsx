@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, Heart, Smile, Frown, MessageCircle, Bookmark } from 'lucide-react';
+import { MessageCircle, Bookmark } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { savePost, unsavePost, isPostSaved } from '@/services/savedPost';
 import { toggleReaction, getUserReactionOnPost, ReactionType } from '@/services/reaction';
+import { Button } from '@/components/ui/button';
+import { APP_CONFIG } from '@/config/settings';
+import { cn } from '@/lib/utils';
 
 interface PostActionsProps {
     postId: string;
@@ -19,61 +22,56 @@ export default function PostActions({ postId, onCommentClick, onReactionChange }
     const [selectedReaction, setSelectedReaction] = useState<'like' | 'love' | 'haha' | 'sad' | null>(null);
     const [showReactions, setShowReactions] = useState(false);
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+    const hideTimer = useRef<NodeJS.Timeout | null>(null);
 
-    const reactions = [
-        { id: 'like', icon: ThumbsUp, label: 'Like', color: 'text-blue-500' },
-        { id: 'love', icon: Heart, label: 'Love', color: 'text-red-500' },
-        { id: 'haha', icon: Smile, label: 'Haha', color: 'text-yellow-500' },
-        { id: 'sad', icon: Frown, label: 'Sad', color: 'text-yellow-600' },
-    ] as const;
+    const reactions = APP_CONFIG.reactions;
 
     useEffect(() => {
         const loadPostData = async () => {
             if (currentUser) {
-                // Check saved status
                 const saved = await isPostSaved(currentUser.uid, postId);
                 setIsSaved(saved);
-
-                // Load user's reaction
                 const userReaction = await getUserReactionOnPost(postId, currentUser.uid);
-                if (userReaction) {
-                    setSelectedReaction(userReaction.type);
-                }
+                if (userReaction) setSelectedReaction(userReaction.type);
             }
         };
         loadPostData();
     }, [currentUser, postId]);
 
+    const handleMouseEnter = () => {
+        if (hideTimer.current) {
+            clearTimeout(hideTimer.current);
+            hideTimer.current = null;
+        }
+        setShowReactions(true);
+    };
+
+    const handleMouseLeave = () => {
+        hideTimer.current = setTimeout(() => {
+            setShowReactions(false);
+        }, 150);
+    };
+
     const handleTouchStart = () => {
-        longPressTimer.current = setTimeout(() => {
-            setShowReactions(true);
-        }, 500);
+        longPressTimer.current = setTimeout(() => setShowReactions(true), 400);
     };
 
     const handleTouchEnd = () => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-        }
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
     };
 
     const handleReactionSelect = async (e: React.MouseEvent, reactionId: typeof reactions[number]['id']) => {
         e.stopPropagation();
-
-        if (!currentUser) {
-            alert("Please login to react to posts");
-            return;
-        }
+        if (!currentUser) return;
 
         try {
-            // If clicking the same reaction, toggle it off
             if (selectedReaction === reactionId) {
-                if (onReactionChange) onReactionChange(selectedReaction, null);
-                setSelectedReaction(null); // Optimistic update
+                onReactionChange?.(selectedReaction, null);
+                setSelectedReaction(null);
                 await toggleReaction(postId, currentUser.uid, reactionId);
             } else {
-                // Otherwise, set the new reaction
-                if (onReactionChange) onReactionChange(selectedReaction, reactionId);
-                setSelectedReaction(reactionId); // Optimistic update
+                onReactionChange?.(selectedReaction, reactionId);
+                setSelectedReaction(reactionId);
                 await toggleReaction(postId, currentUser.uid, reactionId);
             }
             setShowReactions(false);
@@ -82,26 +80,27 @@ export default function PostActions({ postId, onCommentClick, onReactionChange }
         }
     };
 
-    const getReactionIcon = () => {
-        if (!selectedReaction) return <ThumbsUp className="w-5 h-5" />;
-        const reaction = reactions.find(r => r.id === selectedReaction);
-        const Icon = reaction?.icon || ThumbsUp;
-        return <Icon className={`w-5 h-5 ${reaction?.color} fill-current`} />;
-    };
-
-    const getReactionLabel = () => {
-        if (!selectedReaction) return 'Like';
-        const reaction = reactions.find(r => r.id === selectedReaction);
-        return reaction?.label || 'Like';
+    const handleLikeClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!currentUser) return;
+        try {
+            if (!selectedReaction) {
+                onReactionChange?.(null, 'like');
+                setSelectedReaction('like');
+                await toggleReaction(postId, currentUser.uid, 'like');
+            } else {
+                onReactionChange?.(selectedReaction, null);
+                setSelectedReaction(null);
+                await toggleReaction(postId, currentUser.uid, selectedReaction);
+            }
+        } catch (error) {
+            console.error("Error toggling reaction:", error);
+        }
     };
 
     const handleSaveToggle = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!currentUser) {
-            alert("Please login to save posts");
-            return;
-        }
-        if (saveLoading) return;
+        if (!currentUser || saveLoading) return;
 
         setSaveLoading(true);
         try {
@@ -119,88 +118,87 @@ export default function PostActions({ postId, onCommentClick, onReactionChange }
         }
     };
 
+    const activeReaction = reactions.find(r => r.id === selectedReaction);
+
     return (
-        <div className="border-t border-gray-100 pt-2 flex items-center justify-around">
-            {/* Like / Reactions Button */}
-            <div
-                className="relative group"
-                onMouseLeave={() => setShowReactions(false)}
-            >
-                {/* Reactions Popup */}
-                <div className={`
-                    absolute bottom-full left-0 pb-2 transition-all duration-200 origin-bottom-left z-10
-                    ${showReactions ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}
-                `}>
-                    <div className="bg-white rounded-full shadow-lg border border-gray-100 p-1 flex gap-2">
-                        {reactions.map((reaction) => (
-                            <button
-                                key={reaction.id}
-                                onClick={(e) => handleReactionSelect(e, reaction.id)}
-                                className="p-2 hover:bg-gray-50 rounded-full transition-transform hover:scale-110 focus:outline-none"
-                                title={reaction.label}
-                            >
-                                <reaction.icon className={`w-6 h-6 ${reaction.color} ${selectedReaction === reaction.id ? 'fill-current' : ''}`} />
-                            </button>
-                        ))}
+        <div className="flex items-center justify-between pt-2">
+            {/* Left side: Like + Comment */}
+            <div className="flex items-center gap-1">
+                {/* Reaction Button with popup */}
+                <div
+                    className="relative"
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    {/* Invisible bridge to connect button to popup */}
+                    {showReactions && (
+                        <div className="absolute bottom-full left-0 w-full h-3" />
+                    )}
+
+                    {/* Reactions popup */}
+                    <div
+                        className={cn(
+                            "absolute bottom-full left-0 mb-1 transition-all duration-200 origin-bottom-left z-20",
+                            showReactions ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-90 invisible pointer-events-none'
+                        )}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                    >
+                        <div className="flex gap-1 p-1.5 bg-popover rounded-full shadow-lg border border-border">
+                            {reactions.map((r) => (
+                                <button
+                                    key={r.id}
+                                    onClick={(e) => handleReactionSelect(e, r.id)}
+                                    className={cn(
+                                        "w-9 h-9 flex items-center justify-center rounded-full transition-all hover:scale-125 hover:bg-muted",
+                                        selectedReaction === r.id && "bg-muted scale-110"
+                                    )}
+                                >
+                                    <span className="text-xl">{r.emoji}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 h-9 px-3 text-sm font-normal text-muted-foreground"
+                        onClick={handleLikeClick}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        <span className="text-lg">{activeReaction?.emoji || '👍'}</span>
+                        <span className="capitalize">{selectedReaction || 'Like'}</span>
+                    </Button>
                 </div>
 
-                <button
-                    className={`p-2 rounded-lg hover:bg-gray-50 transition-colors ${selectedReaction ? reactions.find(r => r.id === selectedReaction)?.color : 'text-gray-600'}`}
-                    onClick={async (e) => {
-                        e.stopPropagation();
-
-                        if (!currentUser) {
-                            alert("Please login to react to posts");
-                            return;
-                        }
-
-                        try {
-                            if (!selectedReaction) {
-                                // Add 'like' reaction
-                                if (onReactionChange) onReactionChange(null, 'like');
-                                setSelectedReaction('like'); // Optimistic update
-                                await toggleReaction(postId, currentUser.uid, 'like');
-                            } else {
-                                // Remove current reaction
-                                if (onReactionChange) onReactionChange(selectedReaction, null);
-                                setSelectedReaction(null); // Optimistic update
-                                await toggleReaction(postId, currentUser.uid, selectedReaction);
-                            }
-                        } catch (error) {
-                            console.error("Error toggling reaction:", error);
-                        }
-                    }}
-                    onMouseEnter={() => setShowReactions(true)}
-                    onTouchStart={handleTouchStart}
-                    onTouchEnd={handleTouchEnd}
-                    title={getReactionLabel()}
+                {/* Comment Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 h-9 px-3 text-sm font-normal text-muted-foreground"
+                    onClick={(e) => { e.stopPropagation(); onCommentClick?.(); }}
                 >
-                    {getReactionIcon()}
-                </button>
+                    <MessageCircle className="w-5 h-5" />
+                    <span>Comment</span>
+                </Button>
             </div>
 
-            {/* Comment Button */}
-            <button
-                className="p-2 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    if (onCommentClick) onCommentClick();
-                }}
-                title="Comment"
-            >
-                <MessageCircle className="w-5 h-5" />
-            </button>
-
-            {/* Save Button */}
-            <button
+            {/* Right side: Save */}
+            <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleSaveToggle}
                 disabled={saveLoading}
-                className={`p-2 rounded-lg transition-colors ${isSaved ? 'text-blue-500 bg-blue-50' : 'text-gray-600 hover:bg-gray-50'}`}
-                title={isSaved ? "Unsave" : "Save"}
+                className={cn(
+                    "gap-1.5 h-9 px-3 text-sm font-normal",
+                    isSaved ? "text-foreground" : "text-muted-foreground"
+                )}
             >
-                <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
-            </button>
+                <Bookmark className={cn("w-5 h-5", isSaved && "fill-current")} />
+                <span>{isSaved ? 'Saved' : 'Save'}</span>
+            </Button>
         </div>
     );
 }

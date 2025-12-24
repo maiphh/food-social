@@ -11,6 +11,8 @@ import { ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getComments } from '@/services/comments';
 import { Comment } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function PostPage({ params }: { params: Promise<{ userId: string; postId: string }> }) {
     const { userId, postId } = use(params);
@@ -29,8 +31,6 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
                 if (fetchedPost) {
                     const fetchedAuthor = await getUser(fetchedPost.authorId);
                     setAuthor(fetchedAuthor);
-
-                    // Fetch comments
                     const fetchedComments = await getComments(postId);
                     setInitialComments(fetchedComments);
                 }
@@ -46,23 +46,24 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Spinner size="lg" />
             </div>
         );
     }
 
     if (!post) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <div className="text-center">
-                    <p className="text-gray-500 mb-4">Post not found.</p>
-                    <button
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="text-center animate-in fade-in slide-in-from-bottom-4">
+                    <p className="text-muted-foreground mb-4">Post not found.</p>
+                    <Button
+                        variant="link"
                         onClick={() => router.push('/')}
-                        className="text-blue-600 font-medium hover:underline"
+                        className="text-primary"
                     >
                         Go to Feed
-                    </button>
+                    </Button>
                 </div>
                 <BottomNav />
             </div>
@@ -70,32 +71,36 @@ export default function PostPage({ params }: { params: Promise<{ userId: string;
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="min-h-screen bg-background pb-20">
             {/* Header */}
-            <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 flex items-center gap-3">
-                <button onClick={() => router.back()} className="text-gray-600 hover:text-gray-900">
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <h1 className="text-lg font-semibold text-gray-900">Post</h1>
-            </div>
+            <header className="bg-background/80 backdrop-blur-lg border-b border-border sticky top-0 z-10 px-4 h-14 flex items-center gap-3">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.back()}
+                    className="hover:scale-105 transition-transform"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <h1 className="text-lg font-semibold text-foreground">Post</h1>
+            </header>
 
-            <main className="max-w-md mx-auto p-4">
-                {/* Post Detail Component */}
-                <PostDetail
-                    post={post}
-                    author={author}
-                    onAuthorClick={() => router.push(`/${post.authorId}`)}
-                    onCommentClick={() => {
-                        // Scroll to comments section
-                        const commentsSection = document.getElementById('comments-section');
-                        if (commentsSection) {
-                            commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    }}
-                />
+            <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+                <div className="animate-in fade-in slide-in-from-bottom-4">
+                    <PostDetail
+                        post={post}
+                        author={author}
+                        onAuthorClick={() => router.push(`/${post.authorId}`)}
+                        onCommentClick={() => {
+                            const commentsSection = document.getElementById('comments-section');
+                            if (commentsSection) {
+                                commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        }}
+                    />
+                </div>
 
-                {/* Comments Section Component */}
-                <div id="comments-section" className="mt-6">
+                <div id="comments-section" className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: '100ms' }}>
                     <CommentsSection
                         postId={postId}
                         initialComments={initialComments}

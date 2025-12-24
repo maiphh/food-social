@@ -5,6 +5,10 @@ import { signInWithGoogle, signInWithFacebook, signInAsGuest } from '@/services/
 import { useRouter, useSearchParams } from 'next/navigation';
 import { APP_CONFIG } from '@/config/settings';
 import { LogIn } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 function LoginContent() {
     const [error, setError] = useState<string | null>(null);
@@ -28,35 +32,33 @@ function LoginContent() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-                <div className="mb-6 flex justify-center">
-                    <div className="bg-blue-100 p-3 rounded-full">
-                        <LogIn className="w-8 h-8 text-blue-600" />
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 bg-primary/10 p-3 rounded-full w-fit">
+                        <LogIn className="w-8 h-8 text-primary" />
                     </div>
-                </div>
+                    <CardTitle className="text-2xl">Welcome to {APP_CONFIG.name}</CardTitle>
+                    <CardDescription>
+                        Sign in to share your dining experiences
+                    </CardDescription>
+                </CardHeader>
 
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                    Welcome to {APP_CONFIG.name}
-                </h1>
-                <p className="text-gray-500 mb-8">
-                    Sign in to share your dining experiences
-                </p>
+                <CardContent className="space-y-4">
+                    {error && (
+                        <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm animate-in fade-in slide-in-from-top-2">
+                            {error}
+                        </div>
+                    )}
 
-                {error && (
-                    <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                        {error}
-                    </div>
-                )}
-
-                <div className="space-y-3">
-                    <button
+                    <Button
                         onClick={() => handleLogin(signInWithGoogle)}
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="outline"
+                        className="w-full gap-3 h-12 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         {loading ? (
-                            <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                            <Spinner size="sm" />
                         ) : (
                             <>
                                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -80,31 +82,32 @@ function LoginContent() {
                                 Sign in with Google
                             </>
                         )}
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                         onClick={() => handleLogin(signInWithFacebook)}
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white hover:bg-[#1864D9] font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full gap-3 h-12 bg-[#1877F2] hover:bg-[#1864D9] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                             <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036c-2.148 0-2.971.747-2.971 2.28v1.69h4.757l-.871 3.667h-3.886v7.98h-4.844Z" />
                         </svg>
                         Sign in with Facebook
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                         onClick={() => handleLogin(signInAsGuest)}
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-3 bg-gray-800 text-white hover:bg-gray-700 font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="secondary"
+                        className="w-full gap-3 h-12 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                     >
                         <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
                         </svg>
                         Continue as Guest
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -112,8 +115,8 @@ function LoginContent() {
 export default function LoginPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Spinner size="md" />
             </div>
         }>
             <LoginContent />

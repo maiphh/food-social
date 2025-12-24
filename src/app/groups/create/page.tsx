@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera } from 'lucide-react';
+import { ArrowLeft, Camera, Lock, Globe, Users } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { createGroup } from '@/services/group';
 import { uploadImage } from '@/services/cloudinary';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function CreateGroupPage() {
     const [name, setName] = useState('');
@@ -37,7 +41,6 @@ export default function CreateGroupPage() {
         try {
             let imageUrl: string = "";
 
-            // Upload image if selected
             if (imageFile) {
                 imageUrl = await uploadImage(imageFile);
             }
@@ -59,79 +62,127 @@ export default function CreateGroupPage() {
     };
 
     return (
-        <div className="pb-20">
-            <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 h-14 flex items-center gap-4">
-                <button onClick={() => router.back()}>
-                    <ArrowLeft className="w-6 h-6" />
-                </button>
-                <h1 className="text-xl font-bold">Create Group</h1>
+        <div className="min-h-screen bg-background">
+            {/* Header */}
+            <header className="sticky top-0 z-10 bg-background/70 backdrop-blur-xl border-b border-border/50">
+                <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                        <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <h1 className="text-lg font-semibold">Create Group</h1>
+                </div>
             </header>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-6">
-                {/* Group Image Upload */}
-                <div className="flex flex-col items-center">
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                        <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-300 hover:border-blue-500 transition-colors">
-                            {imagePreview ? (
-                                <Image
-                                    src={imagePreview}
-                                    alt="Group preview"
-                                    fill
-                                    className="object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <Camera className="w-10 h-10 text-gray-400" />
+            <main className="max-w-md mx-auto px-4 py-8">
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Group Image Upload */}
+                    <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2">
+                        <label htmlFor="image-upload" className="cursor-pointer group">
+                            <div className={cn(
+                                "relative w-28 h-28 rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border",
+                                "transition-all duration-300 hover:border-foreground hover:scale-105",
+                                imagePreview && "border-solid"
+                            )}>
+                                {imagePreview ? (
+                                    <Image
+                                        src={imagePreview}
+                                        alt="Group preview"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                                        <Camera className="w-8 h-8 text-muted-foreground transition-colors group-hover:text-foreground" />
+                                        <span className="text-[10px] text-muted-foreground">Add Photo</span>
+                                    </div>
+                                )}
+                            </div>
+                        </label>
+                        <input
+                            type="file"
+                            id="image-upload"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                        />
+                    </div>
+
+                    {/* Group Name */}
+                    <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '50ms' }}>
+                        <label htmlFor="name" className="block text-sm font-medium">
+                            Group Name
+                        </label>
+                        <Input
+                            type="text"
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g. Foodies of NY"
+                            className="h-12 text-base"
+                            required
+                        />
+                    </div>
+
+                    {/* Privacy Toggle */}
+                    <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: '100ms' }}>
+                        <label className="block text-sm font-medium">Privacy</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsPrivate(false)}
+                                className={cn(
+                                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                                    !isPrivate
+                                        ? "border-foreground bg-foreground/5"
+                                        : "border-border hover:border-muted-foreground"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center",
+                                    !isPrivate ? "bg-foreground text-background" : "bg-muted"
+                                )}>
+                                    <Globe className="w-5 h-5" />
                                 </div>
-                            )}
+                                <div className="text-center">
+                                    <p className="text-sm font-medium">Public</p>
+                                    <p className="text-[10px] text-muted-foreground">Anyone can join</p>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsPrivate(true)}
+                                className={cn(
+                                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                                    isPrivate
+                                        ? "border-foreground bg-foreground/5"
+                                        : "border-border hover:border-muted-foreground"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center",
+                                    isPrivate ? "bg-foreground text-background" : "bg-muted"
+                                )}>
+                                    <Lock className="w-5 h-5" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm font-medium">Private</p>
+                                    <p className="text-[10px] text-muted-foreground">Invite only</p>
+                                </div>
+                            </button>
                         </div>
-                    </label>
-                    <input
-                        type="file"
-                        id="image-upload"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                    />
-                    <p className="text-sm text-gray-500 mt-2">Click to upload group image</p>
-                </div>
+                    </div>
 
-                <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                        Group Name
-                    </label>
-                    <input
-                        type="text"
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                        placeholder="e.g. Foodies of NY"
-                        required
-                    />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="isPrivate"
-                        checked={isPrivate}
-                        onChange={(e) => setIsPrivate(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor="isPrivate" className="text-sm text-gray-700">
-                        Private Group
-                    </label>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={loading || !name.trim()}
-                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {loading ? 'Creating...' : 'Create Group'}
-                </button>
-            </form>
+                    {/* Submit */}
+                    <Button
+                        type="submit"
+                        disabled={loading || !name.trim()}
+                        className="w-full h-12 text-base animate-in fade-in slide-in-from-bottom-2"
+                        style={{ animationDelay: '150ms' }}
+                    >
+                        {loading ? 'Creating...' : 'Create Group'}
+                    </Button>
+                </form>
+            </main>
         </div>
     );
 }

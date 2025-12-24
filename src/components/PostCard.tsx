@@ -1,7 +1,7 @@
 'use client';
 
 import { Post } from '@/types';
-import { Star, User as UserIcon, Trash2, MoreVertical, Edit2, ThumbsUp, Heart, Smile, Frown } from 'lucide-react';
+import { Star, User as UserIcon, Trash2, MoreHorizontal, Edit2, MessageCircle } from 'lucide-react';
 import { APP_CONFIG } from '@/config/settings';
 import { getUser } from '@/services/user';
 import { deletePost } from '@/services/post';
@@ -11,6 +11,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PostActions from './PostActions';
 import CreatePostModal from './CreatePostModal';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface PostCardProps {
     post: Post;
@@ -18,20 +28,49 @@ interface PostCardProps {
     onClick?: () => void;
 }
 
+function getRelativeTime(timestamp: number): string {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    if (seconds < 60) return 'Just now';
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    if (days < 7) return `${days}d`;
+    if (weeks < 4) return `${weeks}w`;
+    if (months < 12) return `${months}mo`;
+    return `${years}y`;
+}
+
+function formatFullDate(timestamp: number): string {
+    const date = new Date(timestamp);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const day = days[date.getDay()];
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${day}, ${dd}/${mm}/${yyyy} at ${hh}:${min}`;
+}
+
 export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
     const router = useRouter();
-    const [authorName, setAuthorName] = useState<string>('Loading...');
+    const [authorName, setAuthorName] = useState<string>('');
     const [authorPhoto, setAuthorPhoto] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const currentUser = auth.currentUser;
     const isAuthor = currentUser?.uid === post.authorId;
-
-    const [showMenu, setShowMenu] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(post.reactionCount || {});
     const [commentCount, setCommentCount] = useState(post.commentCount || 0);
 
-    // Sync state with props
     useEffect(() => {
         setReactionCounts(post.reactionCount || {});
         setCommentCount(post.commentCount || 0);
@@ -40,242 +79,159 @@ export default function PostCard({ post, onDelete, onClick }: PostCardProps) {
     const handleReactionChange = (oldReaction: ReactionType | null, newReaction: ReactionType | null) => {
         setReactionCounts(prev => {
             const newCounts = { ...prev };
-
-            if (oldReaction) {
-                newCounts[oldReaction] = Math.max(0, (newCounts[oldReaction] || 0) - 1);
-            }
-
-            if (newReaction) {
-                newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
-            }
-
+            if (oldReaction) newCounts[oldReaction] = Math.max(0, (newCounts[oldReaction] || 0) - 1);
+            if (newReaction) newCounts[newReaction] = (newCounts[newReaction] || 0) + 1;
             return newCounts;
         });
     };
 
-    const reactionsConfig = [
-        { id: 'like', icon: ThumbsUp, color: 'text-blue-500', fill: 'fill-blue-500' },
-        { id: 'love', icon: Heart, color: 'text-red-500', fill: 'fill-red-500' },
-        { id: 'haha', icon: Smile, color: 'text-yellow-500', fill: 'fill-yellow-500' },
-        { id: 'sad', icon: Frown, color: 'text-yellow-600', fill: 'fill-yellow-600' },
-    ] as const;
+    const reactionsConfig = APP_CONFIG.reactions;
 
-    // Fetch author's display name and photo
     useEffect(() => {
         const fetchAuthor = async () => {
             try {
                 const user = await getUser(post.authorId);
-                setAuthorName(user?.displayName || 'Unknown User');
+                setAuthorName(user?.displayName || 'Unknown');
                 setAuthorPhoto(user?.photoURL || null);
-            } catch (error) {
-                console.error('Error fetching user:', error);
-                setAuthorName('Unknown User');
-                setAuthorPhoto(null);
+            } catch {
+                setAuthorName('Unknown');
             }
         };
-
         fetchAuthor();
     }, [post.authorId]);
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this post?')) return;
-
+        if (!confirm('Delete this post?')) return;
         setIsDeleting(true);
         try {
             await deletePost(post.id);
-            if (onDelete) onDelete();
-        } catch (error) {
-            console.error('Error deleting post:', error);
-            alert('Failed to delete post');
+            onDelete?.();
+        } catch {
+            alert('Failed to delete');
         } finally {
             setIsDeleting(false);
         }
     };
 
-    const handleClick = () => {
-        if (onClick) {
-            onClick();
-        } else {
-            router.push(`/${post.authorId}/${post.id}`);
-        }
-    };
+    const handleClick = () => onClick ? onClick() : router.push(`/${post.authorId}/${post.id}`);
 
-    // Helper to render stars
-    const renderStars = (rating: number) => {
-        return (
-            <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                        key={star}
-                        className={`w-4 h-4 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-                            }`}
-                    />
-                ))}
-            </div>
-        );
-    };
+    const avgRating = Object.values(post.ratings).reduce((a, b) => a + b, 0) / 3;
 
     return (
-        <div
+        <Card
             onClick={handleClick}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 relative group cursor-pointer hover:shadow-md transition-shadow"
+            className="mb-4 cursor-pointer group overflow-hidden transition-all duration-300 hover:shadow-lg active:scale-[0.99]"
         >
-            <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
-                            {authorPhoto ? (
-                                <img src={authorPhoto} alt={authorName} className="w-full h-full object-cover" />
-                            ) : (
-                                <UserIcon className="w-6 h-6 text-gray-400" />
-                            )}
-                        </div>
-                        <div>
-                            <div className="font-medium text-gray-900">{authorName}</div>
-                            <div className="text-xs text-gray-500">
-                                {new Date(post.createdAt).toLocaleDateString()}
+            {/* Header: Avatar + Name + Time + Menu */}
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                        <AvatarImage src={authorPhoto || undefined} />
+                        <AvatarFallback>
+                            <UserIcon className="w-5 h-5" />
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{authorName}</p>
+                        <div className="relative group/time">
+                            <p className="text-xs text-muted-foreground cursor-default">
+                                {getRelativeTime(post.createdAt)}
+                            </p>
+                            <div className="absolute left-0 bottom-full mb-1 hidden group-hover/time:block z-50">
+                                <div className="bg-popover text-popover-foreground text-xs px-2 py-1 rounded shadow-lg border border-border whitespace-nowrap">
+                                    {formatFullDate(post.createdAt)}
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {isAuthor && (
-                        <div className="relative">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowMenu(!showMenu);
-                                }}
-                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                title="Options"
+                {isAuthor && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                <MoreVertical className="w-5 h-5" />
-                            </button>
+                                <MoreHorizontal className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }} className="gap-2">
+                                <Edit2 className="h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete(); }} disabled={isDeleting} className="gap-2 text-destructive focus:text-destructive">
+                                <Trash2 className="h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+            </div>
 
-                            {showMenu && (
-                                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-40 z-10">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            setShowEditModal(true);
-                                        }}
-                                        className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMenu(false);
-                                            handleDelete();
-                                        }}
-                                        disabled={isDeleting}
-                                        className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        Delete
-                                    </button>
-                                </div>
-                            )}
+            {/* Image */}
+            {post.images?.[0] && (
+                <div className="relative aspect-[4/3] bg-muted overflow-hidden">
+                    <img
+                        src={post.images[0]}
+                        alt=""
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {post.images.length > 1 && (
+                        <div className="absolute bottom-3 right-3 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-full font-medium">
+                            +{post.images.length - 1}
                         </div>
                     )}
+                    <div className="absolute top-3 left-3 flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className="text-xs font-semibold">{avgRating.toFixed(1)}</span>
+                    </div>
                 </div>
+            )}
 
-                <p className="text-gray-800 mb-4 whitespace-pre-wrap">{post.content}</p>
+            {/* Content */}
+            <div className="px-4 pt-3 pb-2">
+                <p className="text-sm leading-relaxed line-clamp-3 mb-3">{post.content}</p>
 
-                {post.images && post.images.length > 0 ? (
-                    <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 aspect-video relative">
-                        <img
-                            src={post.images[0]}
-                            alt="Post content"
-                            className="w-full h-full object-cover"
-                        />
-                        {post.images.length > 1 && (
-                            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
-                                +{post.images.length - 1}
+                {!post.images?.[0] && (
+                    <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
+                        {APP_CONFIG.ratingCategories.map((cat) => (
+                            <div key={cat.id} className="flex items-center gap-1">
+                                <span>{cat.label}</span>
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span className="font-medium text-foreground">{post.ratings[cat.id as keyof typeof post.ratings] || 0}</span>
                             </div>
-                        )}
+                        ))}
                     </div>
-                ) : null}
+                )}
 
-                <div className="flex gap-4 flex-wrap">
-                    {APP_CONFIG.ratingCategories.map((category) => (
-                        <div key={category.id} className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
-                            <span className="text-sm font-medium text-gray-600">{category.label}</span>
-                            {renderStars(post.ratings[category.id as keyof typeof post.ratings] || 0)}
+                {/* Reactions & Comments summary */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pb-2 border-b border-border/50">
+                    <div className="flex items-center gap-1.5">
+                        <div className="flex -space-x-0.5">
+                            {reactionsConfig.map((r) => {
+                                const count = reactionCounts[r.id] || 0;
+                                return count > 0 ? (
+                                    <span key={r.id} className="text-sm">{r.emoji}</span>
+                                ) : null;
+                            })}
                         </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Reaction and Comment Counts */}
-            <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 border-t border-gray-50">
-                <div className="flex items-center gap-1 group/reactions relative">
-                    {/* Reaction Icons */}
-                    <div className="flex -space-x-1 mr-1">
-                        {reactionsConfig.map((reaction) => {
-                            const count = reactionCounts[reaction.id] || 0;
-                            if (count > 0) {
-                                return (
-                                    <div key={reaction.id} className="bg-white rounded-full p-0.5 z-10">
-                                        <reaction.icon className={`w-4 h-4 ${reaction.color} ${reaction.fill}`} />
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
+                        <span>{calculateTotalReactions(reactionCounts)}</span>
                     </div>
-
-                    {/* Total Reactions */}
-                    <span className="cursor-pointer hover:underline">
-                        {calculateTotalReactions(reactionCounts)}
-                    </span>
-
-                    {/* Hover Tooltip */}
-                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover/reactions:block bg-white shadow-lg rounded-lg p-2 border border-gray-100 z-20 min-w-[150px]">
-                        <div className="flex flex-col gap-1">
-                            {Object.entries(reactionCounts).map(([type, count]) => (
-                                count > 0 && (
-                                    <div key={type} className="flex items-center justify-between gap-4">
-                                        <span className="capitalize">{type}</span>
-                                        <span className="font-medium">{count}</span>
-                                    </div>
-                                )
-                            ))}
-                            {calculateTotalReactions(reactionCounts) === 0 && (
-                                <span className="text-xs text-gray-400">No reactions yet</span>
-                            )}
-                        </div>
+                    <div className="flex items-center gap-1">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>{commentCount} comments</span>
                     </div>
                 </div>
-
-                {/* Comment Count */}
-                <div>
-                    {commentCount} comments
-                </div>
             </div>
 
-            {/* Post Actions */}
-            <div className="px-4 pb-2">
-                <PostActions
-                    postId={post.id}
-                    onCommentClick={handleClick}
-                    onReactionChange={handleReactionChange}
-                />
+            {/* Actions */}
+            <div className="px-4 pb-3">
+                <PostActions postId={post.id} onCommentClick={handleClick} onReactionChange={handleReactionChange} />
             </div>
 
-            {/* Edit Modal */}
-            <CreatePostModal
-                isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
-                onSuccess={() => {
-                    setShowEditModal(false);
-                    // Trigger parent refresh if needed
-                    if (onDelete) onDelete();
-                }}
-                post={post}
-            />
-        </div>
+            <CreatePostModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} onSuccess={() => { setShowEditModal(false); onDelete?.(); }} post={post} />
+        </Card>
     );
 }
